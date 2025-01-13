@@ -4,6 +4,7 @@ module ensisa.birds {
 
     requires com.fasterxml.jackson.databind;
     requires jdk.compiler;
+    requires java.sql.rowset;
 
     opens ensisa.birds to javafx.fxml, com.fasterxml.jackson.databind;
     exports ensisa.birds;

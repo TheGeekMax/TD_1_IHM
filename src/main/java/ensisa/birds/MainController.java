@@ -4,17 +4,26 @@ import ensisa.birds.model.Bird;
 import ensisa.birds.model.BirdRepository;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
+import javafx.collections.transformation.FilteredList;
+import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
+import javafx.scene.Node;
+import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
+import javafx.scene.control.TextField;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.VBox;
+import javafx.stage.Stage;
+
+import java.util.function.Predicate;
+
 
 public class MainController {
     // data
     private final ObjectProperty<Bird> currentBird;
     private BirdRepository repository;
-
+    private FilteredList<Bird> filteredBirdList;
 
     // components
     @FXML
@@ -36,12 +45,34 @@ public class MainController {
     @FXML
     private VBox birdView;
 
+    @FXML
+    private Button editButton;
+    @FXML
+    private Button deleteButton;
+    @FXML
+    private TextField filterTextField;
 
     public MainController() {
         repository = new BirdRepository();
         repository.load();
 
         currentBird = new SimpleObjectProperty<>(repository.birds.get(0));
+    }
+
+    @FXML
+    private void deleteButtonAction(ActionEvent event) {
+        repository.birds.remove(getCurrentBird());
+    }
+
+    @FXML
+    private void editButtonAction(ActionEvent event) {
+        Node node = (Node) event.getSource();
+        Stage stage = (Stage) node.getScene().getWindow();
+        BirdEditDialog dialog = new BirdEditDialog(stage, getCurrentBird());
+        System.out.println("Hello world");
+        dialog.showAndWait().ifPresent(bird -> {
+            getCurrentBird().copyFrom(bird);
+        });
     }
 
     public void bind(Bird bird) {
@@ -56,7 +87,8 @@ public class MainController {
 
     public void initialize() {
         birdListView.setCellFactory(new BirdCellFactory());
-        birdListView.setItems(repository.birds);
+        filteredBirdList = new FilteredList<>(repository.birds);
+        birdListView.setItems(filteredBirdList);
         currentBirdProperty().bind(birdListView.getSelectionModel().selectedItemProperty());
         currentBirdProperty().addListener((o, oldValue, newValue) -> {
             if (oldValue != null) {
@@ -64,6 +96,16 @@ public class MainController {
             }
         });
         birdView.visibleProperty().bind(currentBirdProperty().isNotNull());
+        editButton.disableProperty().bind(currentBirdProperty().isNull());
+        deleteButton.disableProperty().bind(currentBirdProperty().isNull());
+
+        filterTextField.textProperty().addListener((observable, oldText, newText) -> {
+            Predicate<Bird> filter = bird -> {
+                String f = newText.trim().toLowerCase();
+                return f.isEmpty() || bird.getCommonName().toLowerCase().contains(f);
+            };
+            filteredBirdList.setPredicate(filter);
+        });
     }
 
     private Bird getCurrentBird() {
